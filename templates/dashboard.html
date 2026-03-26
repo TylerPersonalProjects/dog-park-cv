@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dog Park CV - Live Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+      --border: rgba(255,255,255,0.08); --text: #e8eaf0; --text-muted: #7c82a0;
+      --green: #22c55e; --pink: #e879a0; --amber: #f59e0b;
+      --red: #ef4444; --blue: #60a5fa; --radius: 12px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; }
+    .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+    .status-badge { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .main { display: grid; grid-template-columns: 1fr 340px; gap: 16px; padding: 16px 24px; min-height: calc(100vh - 61px); }
+    .stats-bar { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 4px; }
+    .stat-value { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-card.pink .stat-value { color: var(--pink); }
+    .stat-card.amber .stat-value { color: var(--amber); }
+    .stat-card.red .stat-value { color: var(--red); }
+    .stat-card.blue .stat-value { color: var(--blue); }
+    .feed-panel { background: #000; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; position: relative; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+    .feed-panel img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .feed-overlay { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; }
+    .feed-badge { background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 500; }
+    .rec-dot { display: inline-block; width: 7px; height: 7px; background: var(--red); border-radius: 50%; margin-right: 5px; animation: pulse 1.2s ease-in-out infinite; }
+    .alert-banner { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(239,68,68,0.85); text-align: center; padding: 10px; font-weight: 600; font-size: 14px; display: none; }
+    .alert-banner.active { display: block; }
+    .sidebar { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .panel-body { padding: 14px 16px; }
+    .incident-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; }
+    .incident-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+    .inc-title { font-size: 13px; font-weight: 600; color: var(--red); }
+    .inc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .inc-tag { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
+    .legend { display: flex; flex-direction: column; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .legend-box { width: 20px; height: 20px; border-radius: 4px; border: 2px solid; flex-shrink: 0; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-icon">&#x1F43E;</div>Dog Park CV &mdash; Live Monitor</div>
+  <div class="status-badge"><div class="status-dot"></div>Live</div>
+  <div style="font-size:13px;color:var(--text-muted)">Uptime: <span id="uptime">00:00:00</span></div>
+</header>
+<div class="main">
+  <div class="stats-bar">
+    <div class="stat-card green"><div class="stat-label">People</div><div class="stat-value" id="stat-people">0</div></div>
+    <div class="stat-card pink"><div class="stat-label">Dogs</div><div class="stat-value" id="stat-dogs">0</div></div>
+    <div class="stat-card amber"><div class="stat-label">Squatting</div><div class="stat-value" id="stat-squatting">0</div></div>
+    <div class="stat-card amber"><div class="stat-label">Watching</div><div class="stat-value" id="stat-pending">0</div></div>
+    <div class="stat-card red"><div class="stat-label">Incidents Today</div><div class="stat-value" id="stat-incidents">0</div></div>
+    <div class="stat-card blue"><div class="stat-label">Clips Saved</div><div class="stat-value" id="stat-clips">0</div></div>
+  </div>
+  <div class="feed-panel">
+    <img id="video-feed" src="/video_feed" alt="Live camera feed">
+    <div class="feed-overlay">
+      <div class="feed-badge"><span class="rec-dot"></span>LIVE</div>
+      <div class="feed-badge" id="ts-badge">--:--:--</div>
+    </div>
+    <div class="alert-banner" id="alert-banner">&#9888; Dog poop incident detected &mdash; clip saving!</div>
+  </div>
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-header">Detection Legend</div>
+      <div class="panel-body">
+        <div class="legend">
+          <div class="legend-item"><div class="legend-box" style="border-color:#22c55e;background:rgba(34,197,94,0.15)"></div>Person (tracked)</div>
+          <div class="legend-item"><div class="legend-box" style="border-color:#e879a0;background:rgba(232,121,160,0.15)"></div>Dog (normal)</div>
+          <div class="legend-item"><div class="legend-box" style="border-color:#ef4444;background:rgba(239,68,68,0.15)"></div>Dog &#9888; Squatting</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="flex:1">
+      <div class="panel-header">Incident Log <span id="inc-count" style="background:rgba(239,68,68,0.15);color:var(--red);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700">0</span></div>
+      <div class="panel-body" style="padding:12px">
+        <div class="incident-list" id="incident-list">
+          <div class="empty-state">No incidents yet.<br>System is watching.</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">System</div>
+      <div class="panel-body" style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between"><span>Status</span><span style="color:var(--green)">Running</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Last update</span><span id="sys-lastupdate" style="font-variant-numeric:tabular-nums">-</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let prevIncidents = 0;
+async function fetchStats() {
+  try {
+    const d = await (await fetch('/api/stats')).json();
+    document.getElementById('stat-people').textContent = d.people_in_frame;
+    document.getElementById('stat-dogs').textContent = d.dogs_in_frame;
+    document.getElementById('stat-squatting').textContent = d.dogs_squatting;
+    document.getElementById('stat-pending').textContent = d.pending_incidents;
+    document.getElementById('stat-incidents').textContent = d.total_incidents_today;
+    document.getElementById('stat-clips').textContent = d.clips_saved;
+    document.getElementById('uptime').textContent = d.uptime;
+    document.getElementById('ts-badge').textContent = d.timestamp;
+    document.getElementById('sys-lastupdate').textContent = d.timestamp;
+    document.getElementById('alert-banner').classList.toggle('active', d.pending_incidents > 0);
+    if (d.total_incidents_today > prevIncidents) { prevIncidents = d.total_incidents_today; fetchIncidents(); }
+  } catch(e) {}
+}
+async function fetchIncidents() {
+  try {
+    const incidents = await (await fetch('/api/incidents')).json();
+    const list = document.getElementById('incident-list');
+    document.getElementById('inc-count').textContent = incidents.length;
+    if (!incidents.length) { list.innerHTML = '<div class="empty-state">No incidents yet.<br>System is watching.</div>'; return; }
+    list.innerHTML = incidents.map(inc => {
+      const t = new Date(inc.timestamp * 1000);
+      return '<div class="incident-item" onclick="window.open(`/clips/' + inc.filename + '`,'_blank')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center"><span class="inc-title">&#128680; Dog #' + inc.dog_id + ' &mdash; No Pickup</span><span class="inc-tag">Clip</span></div>' +
+        '<div class="inc-meta">' + t.toLocaleDateString() + ' at ' + t.toLocaleTimeString() + '</div>' +
+        '<div class="inc-meta" style="color:var(--blue)">&#9654; Click to review</div></div>';
+    }).join('');
+  } catch(e) {}
+}
+fetchStats(); fetchIncidents();
+setInterval(fetchStats, 1000);
+setInterval(fetchIncidents, 5000);
+</script>
+</body>
+</html>
