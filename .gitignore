@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Models
+*.pt
+*.onnx
+models/
+
+# Credentials
+credentials.json
+token.json
+*.env
+.env
+
+# Clips
+clips/
+*.mp4
+*.avi
+*.mov
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
